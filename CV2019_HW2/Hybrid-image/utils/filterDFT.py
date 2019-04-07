@@ -7,9 +7,3 @@ def filterDFT(imageMatrix, filterMatrix):
 
     filteredDFT = shiftedDFT * filterMatrix
     return ifft2(ifftshift(filteredDFT))
-
-def filterDFT_subsample(imageMatrix, filterMatrix):
-    shiftedDFT = fftshift(fft2(imageMatrix))
-
-    filteredDFT = shiftedDFT * filterMatrix
-    return ifft2(ifftshift(filteredDFT[::2,::2]))
