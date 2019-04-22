@@ -9,28 +9,28 @@ if __name__ == '__main__':
         "1": {
             "path": ['1.jpg', '2.jpg'],
             "ratio": 0.75,
-            "min_match_num": 20,
-            "iter": 1000,
-            "threshold": 200
+            "min_match_num": 32,
+            "iter": 3000,
+            "threshold": 70
         },
         "2": {
             "path": ['hill1.JPG', 'hill2.JPG'],
-            "ratio": 0.5,
-            "min_match_num": 8,
-            "iter": 500,
-            "threshold": 50
+            "ratio": 0.8,
+            "min_match_num": 32,
+            "iter": 3000,
+            "threshold": 180
         },
         "3": {
             "path": ['S1.jpg', 'S2.jpg'],
-            "ratio": 0.75,
-            "min_match_num": 8,
-            "iter": 100,
-            "threshold": 150
+            "ratio": 0.8,
+            "min_match_num": 16,
+            "iter": 3000,
+            "threshold": 100
         },
     }
 
     for k, para in PARA_DIC.items():
-        if k == "1":
+        if k != "1":
             continue
         print(k)
         img_list = []
@@ -57,12 +57,8 @@ if __name__ == '__main__':
         path_ransac = f'./results/lines_ransac/{path.split(".")[0]}_result.jpg'
         save_matching_img(img_list, kps_list, best_matches, path_ransac)
 
-        src_pts = np.array(
-            [kps_list[1][m[1]].pt for m in best_matches])
-        dst_pts = np.array(
-            [kps_list[0][m[0]].pt for m in best_matches])
-        indexs = np.random.choice(len(best_matches), 4)
-        warpR = cv2.getPerspectiveTransform(np.array(src_pts[indexs], np.float32),
-                                            np.array(dst_pts[indexs], np.float32))
         # Wrap
-        warp(img_list[0], img_list[1], warpR)
+        '''best_homomat = np.array([[7.67052069e-01, -1.33024188e-02, 1.22317779e+02],
+                                 [-1.24741706e-01, 9.22697193e-01, 1.25025810e+01],
+                                 [-6.95491259e-04, -1.36813131e-05, 1.00000000e+00]])'''
+        warp(img_list[0], img_list[1], best_homomat)

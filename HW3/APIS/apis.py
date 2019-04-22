@@ -1,7 +1,6 @@
 from typing import List, Any, Tuple
 import math
 import numpy as np
-from scipy import interpolate
 
 from cv2 import cv2
 
@@ -88,9 +87,9 @@ def homomat(min_match_count: int, src, dst):
         src1, src2 = src[i, 0, 0], src[i, 0, 1]
         dst1, dst2 = dst[i, 0, 0], dst[i, 0, 1]
         A[i * 2, :] = [src1, src2, 1, 0, 0, 0, -
-                       src1 * dst1, - src2 * dst1, - dst1]
+                       src1 * dst1, - src2 * dst1, -dst1]
         A[i * 2 + 1, :] = [0, 0, 0, src1, src2, 1, -
-                           src1 * dst2, - src2 * dst2, - dst2]
+                           src1 * dst2, - src2 * dst2, -dst2]
     [_, S, V] = np.linalg.svd(A)
     m = V[np.argmin(S)]
     m *= 1 / m[-1]
@@ -116,7 +115,9 @@ def ransac(matches, kps_list, min_match_count, num_test: int, threshold: float):
             src_pts_reshape = src_pts.reshape(-1, 2)
             one = np.ones((len(src_pts_reshape), 1))
             src_pts_reshape = np.concatenate((src_pts_reshape, one), axis=1)
-            warped_left = np.mat(homography) * np.mat(src_pts_reshape).T
+            warped_left = np.array(np.mat(homography) * np.mat(src_pts_reshape).T)
+            for i, value in enumerate(warped_left.T):
+                warped_left[:, i] = (value * (1 / value[2])).T
 
             # Calculate SSD
             dst_pts_reshape = dst_pts.reshape(-1, 2)
@@ -143,64 +144,71 @@ def warp(img1, img2, homography):
     # Get images' height and weight
     (hA, wA), (hB, wB) = img1.shape[:2], img2.shape[:2]
 
-    # Create a new view window
-    vis = np.zeros((max(hA, hB), wA + wB, 3), dtype='uint8')
-
     # Transform image 1 with homography matrix
     img2_grid = [[n, m, 1] for n in range(wB) for m in range(hB)]
 
-    # Apply homography image 1
+    # Apply homography image 2
     warped_img2 = np.array(np.mat(homography) * np.mat(img2_grid).T)
+    for i, value in enumerate(warped_img2.T):
+        warped_img2[:, i] = (value * (1 / value[2])).T
 
-    min_n = math.floor(min(warped_img2[0]))
-    max_n = math.ceil(max(warped_img2[0]))
-    min_m = math.floor(min(warped_img2[1]))
-    max_m = math.ceil(max(warped_img2[1]))
-    print(min_n, max_n, min_m, max_m)
+    # Find size of new window
+    min_x = math.floor(min(warped_img2[0]))
+    max_x = math.ceil(max(warped_img2[0]))
+    min_y = math.floor(min(warped_img2[1]))
+    max_y = math.ceil(max(warped_img2[1]))
 
-    n_mosaic = max(max_n, wA) - min(min_n, 1) + 1
-    m_mosaic = max(max_m, hA) - min(min_m, 1) + 1
+    size_x = max(max_x, wA) - min(min_x, 1) + 100
+    size_y = max(max_y, hA) - min(min_y, 1) + 100
 
-    vis = np.zeros((n_mosaic, m_mosaic, 3), dtype='uint8')
-    warped = cv2.warpPerspective(img2, homography, (n_mosaic, m_mosaic))
+    if size_x > 100000:
+        print("Not good")
+        return None
+
+    # OpenCV warp
+    warped = cv2.warpPerspective(img2, homography, (size_y, size_x))
     warped[:hA, :wA] = img1
-    cv2.imshow("show", warped)
-    cv2.waitKey(10000)
+    cv2.imshow("show_opencv", warped)
+    cv2.waitKey(5000)
 
-    img2 = img2.reshape(-1, 1, 3)
-    for i, (x, y) in enumerate(zip(warped_img2[0], warped_img2[1])):
-        vis[math.ceil(x), math.ceil(y)] = img2[i, 0]
-    cv2.imshow("show", vis)
-    cv2.waitKey(10000)
+    # Save the window
+    cv2.imwrite('./results/warp/openCV.jpg', warped)
+    cv2.destroyAllWindows()
 
-    '''# Apply inverse homography to image 1
-    [N_mosaic, M_mosaic] = np.mgrid[min(min_n, 1): (min(min_n, 1) + n_mosaic - 1), min(min_m, 1): (min(min_m, 1) + m_mosaic - 1)]
-    N_mosaic = N_mosaic.reshape(-1,)
-    M_mosaic = M_mosaic.reshape(-1,)
-    ind_mosaic_homo = np.array([[n, m, 1] for n, m in zip(N_mosaic, M_mosaic)])
+    # My warp
 
-    ind_inv_homo = np.linalg.inv(homography).dot(ind_mosaic_homo.T)
-    ind_inv = ind_inv_homo.T / ind_inv_homo[2, :].T.reshape(-1, 1)
-    ind_inv = ind_inv[:, 0: 2]
+    # Take four corner from image 1
+    img1_corners = [[0, 0, 1], [0, hA, 1], [wA, 0, 1], [wA, hA, 1]]
+    warped_corners = np.array(np.linalg.inv(np.mat(homography)) * np.mat(img1_corners).T)
+    for i, value in enumerate(warped_corners.T):
+        warped_corners[:, i] = (value * (1 / value[2])).T
 
-    m_len = (min(min_n, 1) + n_mosaic - 1) - min(min_n, 1)
-    n_len = (min(min_m, 1) + m_mosaic - 1) - min(min_m, 1)
-    M_inv = ind_inv[:, 0].reshape(m_len, n_len)
-    N_inv = ind_inv[:, 1].reshape(m_len, n_len)
+    max4y = math.ceil(max(warped_corners[:, 0]))
+    min4y = math.floor(min(warped_corners[:, 0]))
+    max4x = math.ceil(max(warped_corners[:, 1]))
+    min4x = math.floor(min(warped_corners[:, 1]))
 
-    x, y = np.arange(1, img1.shape[0] + 1), np.arange(1, img1.shape[1] + 1)
-    x_, y_ = ind_inv[:100, 0], ind_inv[:100, 1]
-    f_1 = interpolate.interp2d(
-        x, y, img1[:, :, 0].T, kind='linear')
-    f_2 = interpolate.interp2d(
-        x, y, img1[:, :, 1].T, kind='linear')
-    f_3 = interpolate.interp2d(
-        x, y, img1[:, :, 2].T, kind='linear')
-    print(x_, y_)
-    img1_m[:, :, 0], img1_m[:, :, 1], img1_m[:, :, 2] = f_1(x_, y_), f_2(x_, y_), f_3(x_, y_)
+    max8y = max(max4y, hB)
+    min8y = min(min4y, 0)
+    max8x = max(max4x, wB)
+    min8x = min(min4x, 0)
 
-    cv2.imshow("show.jpg", img1_m)
-    cv2.waitKey(10000)
+    new_size_y = max8y - min8y
+    new_size_x = max8x - min8x
 
-    # Initiate the new window height and weight by images' parameters
-    vis[0:hA, 0:wA], vis[0:hB, wA:] = img1, img2'''
+    vis = np.zeros((new_size_y, new_size_x, 3), dtype='uint8')
+    vis_grid = [[n, m, 1] for n in range(vis.shape[1]) for m in range(vis.shape[0])]
+
+    # Forward Mapping
+    vis_forward = np.zeros((size_y, size_x, 3), dtype='uint8')
+    for x, y, im in zip(warped_img2[0], warped_img2[1], img2_grid):
+        if(sum(img2[im[1], im[0], :]) == 0):
+            print(im[1], im[0])
+        vis_forward[int(y + 0.5), int(x + 0.5)] = img2[im[1], im[0], :]
+    vis_forward[:hA, :wA] = img1
+    cv2.imshow("show_my", vis_forward)
+    cv2.waitKey(5000)
+
+    # Save the window
+    cv2.imwrite('./results/warp/my_forward.jpg', vis_forward)
+    cv2.destroyAllWindows()
