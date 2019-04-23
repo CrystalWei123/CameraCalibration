@@ -13,20 +13,20 @@
 
 1. File dictionary structure
 
-> code/
- >> results/
-  >>> warp
-  >>> sift
-  >>> lines_ransac
-  >>> lines_knn
- >> data/
- >> APIS/
-  >>> __init__.py
-  >>> apis.py
-> run.py
-> Makefile
-> Pipfile
-> Pipfile.lock
+|__ code/
+|  |__ results/
+|  |   |__ warp
+|  |   |__ sift
+|  |   |__ lines_ransac
+|  |   |__ lines_knn
+|  |__ data/
+|  |__ APIS/
+|    |__ __init__.py
+|    |__ apis.py
+|__ run.py
+|__ Makefile
+|__ Pipfile
+|__ Pipfile.lock
 
 
 2. Files description
