@@ -10,9 +10,10 @@ mypy = "*"
 
 [packages]
 numpy = "*"
-opencv-python = "*"
 scipy = "*"
 matplotlib = "*"
+opencv-contrib-python = "==3.4.2.17"
+imagedt = "*"
 
 [requires]
 python_version = "3.7"
