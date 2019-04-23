@@ -44,7 +44,7 @@ def find_matches(rawmatch: dict(), ratio: float) -> List[Tuple[int, int]]:
     matches = []
     for m, value in rawmatch.items():
         if len(value[0]) == 2 and value[1] < value[2] * ratio:
-            matches.append((m, value[0][0]))
+            matches.append([m, value[0][0]])
     return matches
 
 
@@ -107,7 +107,7 @@ def ransac(matches, kps_list, min_match_count, num_test: int, threshold: float):
 
         min_outliers_count = math.inf
         while(num_test != 0):
-            indexs = np.random.choice(len(matches), min_match_count)
+            indexs = np.random.choice(len(matches), min_match_count, replace=False)
             homography = homomat(
                 min_match_count, src_pts[indexs], dst_pts[indexs])
 
@@ -140,75 +140,133 @@ def ransac(matches, kps_list, min_match_count, num_test: int, threshold: float):
         raise Exception("Not much matching keypoints exits!")
 
 
-def warp(img1, img2, homography):
-    # Get images' height and weight
-    (hA, wA), (hB, wB) = img1.shape[:2], img2.shape[:2]
-
-    # Transform image 1 with homography matrix
-    img2_grid = [[n, m, 1] for n in range(wB) for m in range(hB)]
-
-    # Apply homography image 2
-    warped_img2 = np.array(np.mat(homography) * np.mat(img2_grid).T)
-    for i, value in enumerate(warped_img2.T):
-        warped_img2[:, i] = (value * (1 / value[2])).T
-
+def find_newimage_size(warped_img, img_height, img_width):
     # Find size of new window
-    min_x = math.floor(min(warped_img2[0]))
-    max_x = math.ceil(max(warped_img2[0]))
-    min_y = math.floor(min(warped_img2[1]))
-    max_y = math.ceil(max(warped_img2[1]))
+    min_x = math.floor(min(warped_img[0]))
+    max_x = math.ceil(max(warped_img[0]))
+    min_y = math.floor(min(warped_img[1]))
+    max_y = math.ceil(max(warped_img[1]))
 
-    size_x = max(max_x, wA) - min(min_x, 1) + 100
-    size_y = max(max_y, hA) - min(min_y, 1) + 100
+    size_x = max(max_x, img_width) - min(min_x, 1) + 100
+    size_y = max(max_y, img_height) - min(min_y, 1) + 100
 
     if size_x > 100000:
         print("Not good")
-        return None
+        return 0, 0
+    else:
+        return size_y, size_x
+
+
+def forward_warp(size_y, size_x, warped_img, img_grid, img1, img2, path):
+    vis_forward = np.zeros((size_y, size_x, 3), dtype='uint8')
+    for x, y, im in zip(warped_img[0], warped_img[1], img_grid):
+        vis_forward[int(y + 0.5), int(x + 0.5)] = img2[im[1], im[0], :]
+    vis_forward[:img1.shape[0], :img1.shape[1]] = img1
+    cv2.imshow("show forward warp", vis_forward)
+    cv2.waitKey(5000)
+
+    # Save the window
+    cv2.imwrite(path, vis_forward)
+    cv2.destroyAllWindows()
+
+
+def blend(vis_inverse, max4y, min4y, max4x, min4x, img1, alpha):
+    max8y = max(max4y, img1.shape[0])
+    min8y = min(min(min4y, 1), img1.shape[0])
+    max8x = min(max4x, img1.shape[1])
+    min8x = max(min4x, 0)
+
+    for m in range(img1.shape[1]):
+        for n in range(img1.shape[0]):
+            if m in range(min8y, max8y) and n in range(min8x, max8x):
+                if sum(vis_inverse[n, m]) != 0:
+                    vis_inverse[n, m] = alpha * vis_inverse[n, m] + (1 - alpha) * img1[n, m]
+                else:
+                    vis_inverse[n, m] = img1[n, m]
+            else:
+                vis_inverse[n, m] = img1[n, m]
+    return vis_inverse
+
+
+def inverse_warp(size_y,
+                 size_x,
+                 wmg2_corners,
+                 homography,
+                 img1,
+                 img2,
+                 path):
+    vis_inverse = np.zeros((size_y, size_x, 3), dtype='uint8')
+
+    # Create image 2 grid in image 1 coordinate
+    max4y, min4y = math.ceil(max(wmg2_corners[:, 1])), math.floor(min(wmg2_corners[:, 1]))
+    max4x, min4x = math.ceil(max(wmg2_corners[:, 0])), math.floor(min(wmg2_corners[:, 0]))
+
+    wmg2_grid = [[n, m, 1] for n in range(min4x, max4x) for m in range(min(min4y, 1), max4y)]
+
+    # Inverse mapping points on image 1 to image 2
+    wmg1 = np.array(np.matrix(np.linalg.inv(homography)) * np.matrix(wmg2_grid).T)
+    for i, value in enumerate(wmg1.T):
+        wmg1[:, i] = (value * (1 / value[2])).T
+
+    for x, y, im in zip(wmg1[0], wmg1[1], wmg2_grid):
+        if int(y + 0.5) >= img2.shape[0] or int(y + 0.5) < 0:
+            continue
+        elif int(x + 0.5) >= img2.shape[1]:
+            continue
+        else:
+            vis_inverse[im[1], im[0]] = img2[int(y + 0.5), int(x + 0.5), :]
+    vis_inverse = blend(vis_inverse, max4y, min4y, max4x, min4x, img1, 0.2)
+    # vis_inverse[:img1.shape[0], :img1.shape[1]] = img1
+
+    cv2.imshow("show inverse warp", vis_inverse)
+    cv2.waitKey(5000)
+    cv2.imwrite(path, vis_inverse)
+    cv2.destroyAllWindows()
+
+
+def warp(img1, img2, homography, path_list):
+    # Get images' height and weight
+    (hA, wA), (hB, wB) = img1.shape[:2], img2.shape[:2]
+
+    # Transform image 2 with homography matrix
+    img2_grid = [[n, m, 1] for n in range(wB) for m in range(hB)]
+
+    # Apply homography on image 2
+    wmg2 = np.array(np.mat(homography) * np.mat(img2_grid).T)
+    for i, value in enumerate(wmg2.T):
+        wmg2[:, i] = (value * (1 / value[2])).T
+
+    # Find new window size
+    size_y, size_x = find_newimage_size(wmg2, hA, wA)
+    if size_x == 0 and size_y == 0:
+        return 1
+
+    # Find transformed four corners og image 2 on image 1 coordinate system
+    wmg2_corners = np.zeros((4, 3))
+    for wp, im in zip(wmg2.T, img2_grid):
+        if im[0] == 0 and im[1] == 0:
+            wmg2_corners[0] = wp
+        elif im[0] == 0 and im[1] == hB - 1:
+            wmg2_corners[1] = wp
+        elif im[0] == wB - 1 and im[1] == 0:
+            wmg2_corners[2] = wp
+        elif im[0] == wB - 1 and im[1] == hB - 1:
+            wmg2_corners[3] = wp
+        else:
+            continue
 
     # OpenCV warp
     warped = cv2.warpPerspective(img2, homography, (size_y, size_x))
     warped[:hA, :wA] = img1
     cv2.imshow("show_opencv", warped)
     cv2.waitKey(5000)
-
-    # Save the window
-    cv2.imwrite('./results/warp/openCV.jpg', warped)
+    cv2.imwrite(path_list[0], warped)
     cv2.destroyAllWindows()
 
-    # My warp
+    # Forward warping
+    forward_warp(size_y, size_x, wmg2, img2_grid, img1, img2, path_list[1])
 
-    # Take four corner from image 1
-    img1_corners = [[0, 0, 1], [0, hA, 1], [wA, 0, 1], [wA, hA, 1]]
-    warped_corners = np.array(np.linalg.inv(np.mat(homography)) * np.mat(img1_corners).T)
-    for i, value in enumerate(warped_corners.T):
-        warped_corners[:, i] = (value * (1 / value[2])).T
+    # Inverse warping
+    inverse_warp(size_y, size_x, wmg2_corners, homography, img1, img2, path_list[2])
 
-    max4y = math.ceil(max(warped_corners[:, 0]))
-    min4y = math.floor(min(warped_corners[:, 0]))
-    max4x = math.ceil(max(warped_corners[:, 1]))
-    min4x = math.floor(min(warped_corners[:, 1]))
-
-    max8y = max(max4y, hB)
-    min8y = min(min4y, 0)
-    max8x = max(max4x, wB)
-    min8x = min(min4x, 0)
-
-    new_size_y = max8y - min8y
-    new_size_x = max8x - min8x
-
-    vis = np.zeros((new_size_y, new_size_x, 3), dtype='uint8')
-    vis_grid = [[n, m, 1] for n in range(vis.shape[1]) for m in range(vis.shape[0])]
-
-    # Forward Mapping
-    vis_forward = np.zeros((size_y, size_x, 3), dtype='uint8')
-    for x, y, im in zip(warped_img2[0], warped_img2[1], img2_grid):
-        if(sum(img2[im[1], im[0], :]) == 0):
-            print(im[1], im[0])
-        vis_forward[int(y + 0.5), int(x + 0.5)] = img2[im[1], im[0], :]
-    vis_forward[:hA, :wA] = img1
-    cv2.imshow("show_my", vis_forward)
-    cv2.waitKey(5000)
-
-    # Save the window
-    cv2.imwrite('./results/warp/my_forward.jpg', vis_forward)
-    cv2.destroyAllWindows()
+    return 0

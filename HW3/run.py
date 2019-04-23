@@ -9,30 +9,49 @@ if __name__ == '__main__':
         "1": {
             "path": ['1.jpg', '2.jpg'],
             "ratio": 0.75,
-            "min_match_num": 32,
+            "min_match_num": 16,
             "iter": 3000,
-            "threshold": 70
+            "threshold": 70,
+            "key": 'first'
         },
         "2": {
             "path": ['hill1.JPG', 'hill2.JPG'],
             "ratio": 0.8,
-            "min_match_num": 32,
+            "min_match_num": 16,
             "iter": 3000,
-            "threshold": 180
+            "threshold": 150,
+            "key": 'hill'
         },
         "3": {
             "path": ['S1.jpg', 'S2.jpg'],
             "ratio": 0.8,
             "min_match_num": 16,
             "iter": 3000,
-            "threshold": 100
+            "threshold": 100,
+            "key": 'S'
         },
+        "bottle": {
+            "path": ['bottle_left.jpg', 'bottle_right.jpg'],
+            "ratio": 0.75,
+            "min_match_num": 8,
+            "iter": 1000,
+            "threshold": 100,
+            "key": 'bottle'
+        },
+        "machine": {
+            "path": ['machine_left.jpg', 'machine_right.jpg'],
+            "ratio": 0.8,
+            "min_match_num": 16,
+            "iter": 3000,
+            "threshold": 100,
+            "key": 'machine'
+        }
     }
 
     for k, para in PARA_DIC.items():
-        if k != "1":
-            continue
-        print(k)
+        path_list = [f'./results/warp/{para["key"]}/openCV_f.jpg',
+                     f'./results/warp/{para["key"]}/forward_f.jpg',
+                     f'./results/warp/{para["key"]}/backward_blending.jpg']
         img_list = []
         kps_list = []
         des_list = []
@@ -56,9 +75,16 @@ if __name__ == '__main__':
             matches, kps_list, para["min_match_num"], para["iter"], para["threshold"])
         path_ransac = f'./results/lines_ransac/{path.split(".")[0]}_result.jpg'
         save_matching_img(img_list, kps_list, best_matches, path_ransac)
+        print(best_homomat)
 
-        # Wrap
-        '''best_homomat = np.array([[7.67052069e-01, -1.33024188e-02, 1.22317779e+02],
-                                 [-1.24741706e-01, 9.22697193e-01, 1.25025810e+01],
-                                 [-6.95491259e-04, -1.36813131e-05, 1.00000000e+00]])'''
-        warp(img_list[0], img_list[1], best_homomat)
+        # cv2
+        src_pts = np.array(
+            [kps_list[1][m[1]].pt for m in best_matches])
+        dst_pts = np.array(
+            [kps_list[0][m[0]].pt for m in best_matches])
+        indexs = np.random.choice(len(best_matches), 4, replace=False)
+        best_homomat = cv2.getPerspectiveTransform(np.array(src_pts[indexs], np.float32),
+                                                   np.array(dst_pts[indexs], np.float32))
+        print(best_homomat)
+
+        re = warp(img_list[0], img_list[1], best_homomat, path_list)

@@ -1,4 +1,4 @@
-from .apis import sift, knnmatch, find_matches, save_matching_img, ransac, warp
+from .apis import sift, knnmatch, find_matches, save_matching_img, ransac, warp, homomat
 
 
 __all__ = [
@@ -7,5 +7,6 @@ __all__ = [
     "find_matches",
     "save_matching_img",
     "ransac",
-    "warp"
+    "warp",
+    "homomat"
 ]
