@@ -77,14 +77,4 @@ if __name__ == '__main__':
         save_matching_img(img_list, kps_list, best_matches, path_ransac)
         print(best_homomat)
 
-        # cv2
-        src_pts = np.array(
-            [kps_list[1][m[1]].pt for m in best_matches])
-        dst_pts = np.array(
-            [kps_list[0][m[0]].pt for m in best_matches])
-        indexs = np.random.choice(len(best_matches), 4, replace=False)
-        best_homomat = cv2.getPerspectiveTransform(np.array(src_pts[indexs], np.float32),
-                                                   np.array(dst_pts[indexs], np.float32))
-        print(best_homomat)
-
         re = warp(img_list[0], img_list[1], best_homomat, path_list)
