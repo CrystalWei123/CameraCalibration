@@ -1,4 +1,6 @@
 import numpy as np
+
+
 def my_imfilter(image, imfilter):
 
     output = image.copy()

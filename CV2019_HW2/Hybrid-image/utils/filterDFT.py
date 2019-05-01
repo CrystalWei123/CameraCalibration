@@ -1,4 +1,3 @@
-import numpy as np
 from numpy.fft import fftshift, fft2, ifft2, ifftshift
 
 
