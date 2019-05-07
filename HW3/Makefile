@@ -3,7 +3,7 @@ init:
 	pipenv --python 3.7
 	pipenv install --dev --skip-lock
 
-LIB_LINT = data
+LIB_LINT = APIS
 RUN_LINT = run.py
 PYTHON_LINT = $(LIB_LINT) $(RUN_LINT)
 
