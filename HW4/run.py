@@ -1,12 +1,13 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D  # pylint: disable = unused-import
+from mpl_toolkits.mplot3d import Axes3D  # noqa: F401  # pylint: disable = unused-import
 
 import cv2
 
 from SFM import find_fundamental_matrix, compute_correspond_epilines, drawlines
 from SFM import sift, knnmatch, find_matches, compute_essential, get_4_possible_projection_matrix
 from SFM import linear_triangulation, get_correct_P
+
 
 DATA_path = {
     "1": {
@@ -56,9 +57,9 @@ if __name__ == "__main__":
         cor_point_im1, cor_point_im2 = np.array(cor_point_im1), np.array(cor_point_im2)
 
         # Find fundamental matrix
-        file_name = value["path"]
-        im1_grey = cv2.imread(f"./data/{file_name[0]}", cv2.IMREAD_GRAYSCALE)
-        im2_grey = cv2.imread(f"./data/{file_name[1]}", cv2.IMREAD_GRAYSCALE)
+        files_name = value["path"]
+        im1_grey = cv2.imread(f"./data/{files_name[0]}", cv2.IMREAD_GRAYSCALE)
+        im2_grey = cv2.imread(f"./data/{files_name[1]}", cv2.IMREAD_GRAYSCALE)
         best_matrix, best_inlier = find_fundamental_matrix(cor_point_im1, cor_point_im2)
         print(f"Fundamental matrix: \n {best_matrix}")
 
@@ -70,7 +71,7 @@ if __name__ == "__main__":
             im1_grey, im2_grey, line2, best_inlier[:, 0].astype('int'), best_inlier[:, 1].astype('int'))
         fig, ax = plt.subplots(1, 1)
         ax.imshow(img2, cmap='gray')
-        epi_name = file_name[0].split(".")[0]
+        epi_name = files_name[0].split(".")[0]
         plt.savefig(f"./result/epiline/{epi_name}.png")
         fig.show()
 
@@ -109,9 +110,9 @@ if __name__ == "__main__":
 
         # Save 2D and 3D point for texture mapping
         import scipy.io
-        scipy.io.savemat(f"2dpoint_{epi_name}", mdict={'arr': cor_point_im1})
-        scipy.io.savemat(f"3dpoint_{epi_name}", mdict={'arr': tripoints3d})
-        scipy.io.savemat(f"cameramatrix_{epi_name}", mdict={'arr': P2})
+        scipy.io.savemat(f"./matlab_matrix/2dpoint_{epi_name}", mdict={'arr': cor_point_im1})
+        scipy.io.savemat(f"./matlab_matrix/3dpoint_{epi_name}", mdict={'arr': tripoints3d[:, :3]})
+        scipy.io.savemat(f"./matlab_matrix/cameramatrix_{epi_name}", mdict={'arr': P2})
 
         # Select points
         if key == "1":

@@ -3,8 +3,8 @@ init:
 	pipenv --python 3.7
 	pipenv install --dev --skip-lock
 
-LIB_LINT = data
-RUN_LINT = run_sift.py
+LIB_LINT = SFM
+RUN_LINT = run.py
 PYTHON_LINT = $(LIB_LINT) $(RUN_LINT)
 
 lint: ending flake8 pylint mypy
@@ -25,4 +25,4 @@ clean:
 	rm -rf .mypy_cache/
 
 run:
-	pipenv run python3 run_sift.py
+	pipenv run python3 run.py
