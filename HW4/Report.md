@@ -352,6 +352,9 @@ The overall tasks so as following:
 **3D points cloud**
 ![](https://i.imgur.com/FLm6jKU.png)
 
+**texture mapping**
+![](https://i.imgur.com/c6QqOBa.png)
+
 
 3. Task2 -- Statue
 **SIFT points**
@@ -367,6 +370,9 @@ The overall tasks so as following:
 **3D points cloud**
 ![](https://i.imgur.com/Vfa9NCH.png)
 
+**texture mapping**
+![](https://i.imgur.com/uuBrALx.png)
+
 4. Task3 -- Our image
 **SIFT points**
 ![](https://i.imgur.com/eyBAqjO.jpg)
@@ -380,7 +386,8 @@ The overall tasks so as following:
 ![](https://i.imgur.com/gQu9cNR.png)
 
 **Texture mapping**
-![](https://i.imgur.com/4bn64Nk.png)
+![](https://i.imgur.com/4UXM2JG.png)
+
 
 ## Discussion
 1. Fundamental matrix finding problem: While finding the right fundamental matrix, we use SVD decomposition to get the U, S, V to get the result. However, in numpy, the output V is already transposed and S is a vector. In the beginning, we transpose the V and forget to diagnize the S, so we always get the wrong matrix and plot the weird epipolar lines (Figure 3). 
