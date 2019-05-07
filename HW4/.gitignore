@@ -1,0 +1,13 @@
+.vscode/
+__pycache__/
+**.swp
+
+.idea/
+*.iml
+
+.mypy_cache/
+
+.ipynb_checkpoints/
+
+bak/
+*.db
