@@ -131,7 +131,7 @@ def ransac(matches, kps_list, min_match_count, num_test: int, threshold: float):
                     inlier_list.append(pair)
 
             if (len(matches) - inlier_count) < min_outliers_count:
-                min_match_count = (len(matches) - inlier_count)
+                min_outliers_count = (len(matches) - inlier_count)
                 best_homomat = homography
                 best_matches = inlier_list
             num_test -= 1
