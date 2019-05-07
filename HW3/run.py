@@ -9,25 +9,25 @@ if __name__ == '__main__':
         "1": {
             "path": ['1.jpg', '2.jpg'],
             "ratio": 0.75,
-            "min_match_num": 16,
-            "iter": 3000,
-            "threshold": 70,
+            "min_match_num": 8,
+            "iter": 1000,
+            "threshold": 0.5,
             "key": 'first'
         },
         "2": {
             "path": ['hill1.JPG', 'hill2.JPG'],
             "ratio": 0.8,
-            "min_match_num": 16,
-            "iter": 3000,
-            "threshold": 150,
+            "min_match_num": 8,
+            "iter": 1000,
+            "threshold": 0.5,
             "key": 'hill'
         },
         "3": {
             "path": ['S1.jpg', 'S2.jpg'],
             "ratio": 0.8,
             "min_match_num": 16,
-            "iter": 3000,
-            "threshold": 100,
+            "iter": 1000,
+            "threshold": 0.5,
             "key": 'S'
         },
         "bottle": {
@@ -35,15 +35,15 @@ if __name__ == '__main__':
             "ratio": 0.75,
             "min_match_num": 8,
             "iter": 1000,
-            "threshold": 100,
+            "threshold": 0.5,
             "key": 'bottle'
         },
         "machine": {
             "path": ['machine_left.jpg', 'machine_right.jpg'],
             "ratio": 0.8,
-            "min_match_num": 16,
-            "iter": 3000,
-            "threshold": 100,
+            "min_match_num": 8,
+            "iter": 1000,
+            "threshold": 0.5,
             "key": 'machine'
         }
     }
