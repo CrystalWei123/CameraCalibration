@@ -1,0 +1,18 @@
+[[source]]
+name = "pypi"
+url = "https://pypi.org/simple"
+verify_ssl = true
+
+[dev-packages]
+flake8 = "*"
+pylint = "*"
+mypy = "*"
+
+[packages]
+opencv-python = "*"
+scipy = "*"
+matplotlib = "*"
+opencv-contrib-python = "==3.4.2.17"
+
+[requires]
+python_version = "3.7"
