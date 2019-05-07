@@ -1,4 +1,4 @@
-from typing import List, Any, Tuple
+from typing import List, Any, Tuple, Dict
 import math
 import numpy as np
 import matplotlib.pyplot as plt
@@ -6,10 +6,24 @@ import matplotlib.pyplot as plt
 from cv2 import cv2
 
 
-def sift(img_path: str, str_path: str, show_flag: bool = False) -> Tuple[List[Any], List[List[float]]]:
+def sift(img_path: str,
+         str_path: str,
+         show_flag: bool = False) -> Tuple[List[Any], List[List[float]]]:
+    """SIFT to find features
+
+    Arguments:
+        img_path {str} -- Path to read image
+        str_path {str} -- Path to store image
+
+    Keyword Arguments:
+        show_flag {bool} -- determine whether to plot image (default: {False})
+
+    Returns:
+        Tuple[List[Any], List[List[float]]] -- keypoint object, (x, y) points coordinates
+    """
     img = cv2.imread(img_path)
     arr_img = np.uint8(img)
-    detector = cv2.xfeatures2d.SIFT_create()
+    detector = cv2.xfeatures2d.SIFT_create()  # pylint: disable=maybe-no-member
     (kps, des) = detector.detectAndCompute(arr_img, None)
     for kp in kps:
         color = tuple(np.random.randint(0, 255, 3).tolist())
@@ -24,7 +38,16 @@ def sift(img_path: str, str_path: str, show_flag: bool = False) -> Tuple[List[An
     return kps, des
 
 
-def knnmatch(des_list: List[List[float]]):
+def knnmatch(des_list: List[List[List[float]]]) -> Dict[int, List[Any]]:
+    """Ratio test using KNN to select rawmatch
+
+    Arguments:
+        des_list {List[List[float]]} -- (x, y) feature coordinate list
+
+    Returns:
+        Dict[int, List[float]] -- key: feature in image 1
+                                  value: corresponding feature in image 2
+    """
     des1 = des_list[0]
     des2 = des_list[1]
     dist_matrix = np.zeros((len(des1), len(des2)))
@@ -39,7 +62,8 @@ def knnmatch(des_list: List[List[float]]):
     return rawmatch
 
 
-def find_matches(rawmatch: dict(), ratio: float) -> List[Tuple[int, int]]:
+def find_matches(rawmatch: Dict[int, List[Any]],
+                 ratio: float) -> List[List[Any]]:
     """Find matches
 
     Arguments:
@@ -56,14 +80,14 @@ def find_matches(rawmatch: dict(), ratio: float) -> List[Tuple[int, int]]:
     return matches
 
 
-def save_matching_img(img_list: List[str],
+def save_matching_img(img_list: List[Any],
                       kps_list: List[List[Any]],
                       matches: List[List[int]],
                       path: str):
     """Save feature matching image
 
     Arguments:
-        img_list {List[str]} -- List of images
+        img_list {List[Any]} -- List of images
         kps_list {List[List[Any]]} -- List of keypoints in images
         matches {List[List[int]]} -- Pair of keypoints between images
         path {str} -- Save path
@@ -114,7 +138,7 @@ def ransac(matches, kps_list, min_match_count, num_test: int, threshold: float):
             [kps_list[0][m[0]].pt for m in matches]).reshape(-1, 1, 2)
 
         min_outliers_count = math.inf
-        while(num_test != 0):
+        while num_test != 0:
             indexs = np.random.choice(len(matches), min_match_count, replace=False)
             homography = homomat(
                 min_match_count, src_pts[indexs], dst_pts[indexs])

@@ -1,26 +1,48 @@
+from typing import List, Tuple
 import math
 import numpy as np
 import numpy.matlib
+
 from cv2 import cv2
 
 
 def _normalize(input_matrix):
+
+    # Convert to numpy matix form
     input_matrix = np.matrix(input_matrix)
+
+    # Compute mean along column
     mean_a = np.array(input_matrix.mean(0)).ravel()
+
+    # Compute variance of distance from cetroid of the image
     Centred_a = input_matrix - numpy.matlib.repmat(mean_a, input_matrix.shape[0], 1)
     var_a = np.matrix(Centred_a).var(0)
     sd_a = np.array(np.sqrt(var_a)).ravel()
+
+    # Compute the normalize matrix
     Ta = np.matrix([[1 / sd_a[0], 0, 0],
                     [0, 1 / sd_a[1], 0], [0, 0, 1]])\
         * np.matrix([[1, 0, -mean_a[0]],
                      [0, 1, -mean_a[1]],
                      [0, 0, 1]])
+
+    # Convert to homogenous coordinate
     input_matrix = np.concatenate((input_matrix, np.ones((input_matrix.shape[0], 1))), axis=1)
     return np.array(np.matrix(np.matrix(Ta) * np.matrix(input_matrix).T).T), Ta
 
 
-def find_fundamental_matrix(cor_point_im1: np.ndarray, cor_point_im2: np.ndarray):
+def _get_system_equation(img1_points, img2_points):
     MODELPOINTS = 8
+    A = np.zeros((MODELPOINTS, 9))
+    for i in range(MODELPOINTS):
+        x1, y1 = img1_points[i, 0], img1_points[i, 1]
+        x2, y2 = img2_points[i, 0], img2_points[i, 1]
+        A[i] = [x2 * x1, x2 * y1, x2, y2 * x1, y2 * y1, y2, x1, y1, 1]
+    return A
+
+
+def find_fundamental_matrix(cor_point_im1: np.ndarray,
+                            cor_point_im2: np.ndarray):
     niters = 1000
     maxinlier = 0
 
@@ -33,12 +55,8 @@ def find_fundamental_matrix(cor_point_im1: np.ndarray, cor_point_im2: np.ndarray
         rdn_idx = np.random.choice(norm_cp_im1.shape[0], 8)
         img1_points = norm_cp_im1[rdn_idx]
         img2_points = norm_cp_im2[rdn_idx]
-        A = np.zeros((MODELPOINTS, 9))
 
-        for i in range(MODELPOINTS):
-            x1, y1 = img1_points[i, 0], img1_points[i, 1]
-            x2, y2 = img2_points[i, 0], img2_points[i, 1]
-            A[i] = [x2 * x1, x2 * y1, x2, y2 * x1, y2 * y1, y2, x1, y1, 1]
+        A = _get_system_equation(img1_points, img2_points)
 
         # Solve f from af=0 using svd
         [_, _, V] = np.linalg.svd(A)
@@ -75,7 +93,9 @@ def find_fundamental_matrix(cor_point_im1: np.ndarray, cor_point_im2: np.ndarray
     return np.array(denorm_matrix), np.array(denorm_inlier)
 
 
-def compute_correspond_epilines(cor_point_im, which_image, fundamental_matrix):
+def compute_correspond_epilines(cor_point_im,
+                                which_image,
+                                fundamental_matrix):
     cor_point_im_3f = np.concatenate((cor_point_im, np.ones((cor_point_im.shape[0], 1))), axis=1)
     if which_image == 2:
         fundamental_matrix = fundamental_matrix.T
@@ -91,9 +111,23 @@ def compute_correspond_epilines(cor_point_im, which_image, fundamental_matrix):
     return dsf
 
 
-def drawlines(img1, img2, lines, pts1, pts2):
-    ''' img1 - image on which we draw the epilines for the points in img2
-        lines - corresponding epilines '''
+def drawlines(img1: np.ndarray,
+              img2: np.ndarray,
+              lines: np.ndarray,
+              pts1: np.ndarray,
+              pts2: np.ndarray) -> Tuple[List[float], List[float]]:
+    """Draw epipolar lines
+
+    Arguments:
+        img1 {List[float]} -- Image which we compute the epipolar lines
+        img2 {List[float]} -- Image whcih we draw the epipolar lines
+        lines {np.ndarray} -- Corresponding epilines
+        pts1 {np.ndarray} -- List of the features in image1
+        pts2 {np.ndarray} -- List of the features in image2
+
+    Returns:
+        Tuple[List[float], List[float]] -- Images which are drawn
+    """
     r, c = img2.shape
     img1 = cv2.cvtColor(img1, cv2.COLOR_GRAY2BGR)
     img2 = cv2.cvtColor(img2, cv2.COLOR_GRAY2BGR)
